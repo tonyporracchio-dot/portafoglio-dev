@@ -1,0 +1,2 @@
+# Local Firebase config (contains API keys — never commit)
+firebase-config.js

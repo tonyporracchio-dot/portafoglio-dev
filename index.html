@@ -61,6 +61,8 @@
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+  <!-- Local secrets: copy firebase-config.example.js → firebase-config.js -->
+  <script src="firebase-config.js"></script>
 </head>
 <body class="bg-slate-900 text-slate-100 min-h-screen font-sans pb-12 select-none">
 
@@ -409,15 +411,9 @@
 
   <!-- LOGICA JAVASCRIPT & FIREBASE -->
   <script>
-    const firebaseConfig = {
-      apiKey: "AIzaSyC-WrC9fbfOrYWl3F3c9JGtMujBRs5-nEo",
-      authDomain: "portafoglio-gemini.firebaseapp.com",
-      projectId: "portafoglio-gemini",
-      storageBucket: "portafoglio-gemini.firebasestorage.app",
-      messagingSenderId: "190042969168",
-      appId: "1:190042969168:web:e60fe9fe7ea4a44b1e2d55",
-      measurementId: "G-5PWT8M9RD1"
-    };
+    if (typeof firebaseConfig === "undefined") {
+      throw new Error("Missing firebase-config.js. Copy firebase-config.example.js to firebase-config.js and add your Firebase keys.");
+    }
 
     if (!firebase.apps.length) {
       firebase.initializeApp(firebaseConfig);
