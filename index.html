@@ -421,6 +421,10 @@
     const auth = firebase.auth();
     const db = firebase.firestore();
 
+    // Sandbox isolato: non condivide i dati cloud/locali con portafoglio (produzione)
+    const DATA_COLLECTION = 'portafogli_utenti_dev';
+    const LOCAL_STORAGE_KEY = 'patrimonio_data_v3_dev';
+
     let currentUser = null;
     
     // Nuovo State Globale
@@ -537,11 +541,8 @@
 
     function loadFromLocalStorage() {
       try {
-        const localNew = JSON.parse(localStorage.getItem('patrimonio_data_v3'));
+        const localNew = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY));
         if (localNew) return normalizeData(localNew);
-        // Fallback per vecchi salvataggi
-        const localV2 = JSON.parse(localStorage.getItem('patrimonio_data_v2'));
-        if (localV2) return normalizeData(localV2);
       } catch (e) {
         console.error("Errore lettura localStorage:", e);
       }
@@ -550,7 +551,7 @@
 
     function saveToLocalStorage() {
       try {
-        localStorage.setItem('patrimonio_data_v3', JSON.stringify(appData));
+        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(appData));
       } catch (e) {
         console.error("Errore salvataggio localStorage:", e);
       }
@@ -607,7 +608,7 @@
     function loadUserDataFromCloud() {
       if (!currentUser) return;
 
-      db.collection('portafogli_utenti').doc(currentUser.uid).onSnapshot((doc) => {
+      db.collection(DATA_COLLECTION).doc(currentUser.uid).onSnapshot((doc) => {
         if (doc.exists) {
           appData = normalizeData(doc.data());
         } else {
@@ -629,7 +630,7 @@
     function saveUserData() {
       saveToLocalStorage();
       if (currentUser) {
-        db.collection('portafogli_utenti').doc(currentUser.uid).set(appData)
+        db.collection(DATA_COLLECTION).doc(currentUser.uid).set(appData)
           .catch(err => console.error("Errore salvataggio Cloud:", err));
       }
     }
