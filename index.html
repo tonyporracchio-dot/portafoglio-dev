@@ -173,6 +173,67 @@
 
     </div>
 
+    <!-- SEZIONE GRAFICO ANDAMENTO TEMPORALE (CSV) -->
+    <div class="bg-slate-800/80 border border-slate-700/60 rounded-xl shadow-sm p-4 space-y-3">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+        <div class="flex items-center gap-2">
+          <h2 class="font-medium text-slate-300 text-xs uppercase tracking-wider">Andamento nel Tempo</h2>
+          <span id="trend-data-badge" class="text-[10px] bg-slate-700/70 text-slate-400 px-2 py-0.5 rounded-full font-mono">Caricamento CSV...</span>
+        </div>
+        <div class="flex items-center gap-1.5 self-end sm:self-auto">
+          <button onclick="reloadCsvData()" class="text-slate-400 hover:text-white p-1.5 rounded-md bg-slate-900/60 hover:bg-slate-700 border border-slate-700/60 transition-colors" title="Ricarica dati CSV">
+            <svg id="csv-reload-icon" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+          </button>
+          <button onclick="openCsvModal()" class="text-xs text-slate-300 hover:text-white bg-slate-900/60 hover:bg-slate-700 border border-slate-700/60 px-2.5 py-1 rounded-md transition-all flex items-center gap-1.5 font-normal">
+            <svg class="w-3.5 h-3.5 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            Sorgente CSV
+          </button>
+        </div>
+      </div>
+
+      <!-- BARRA CONTROLLI (SERIE & TIMEFRAME) -->
+      <div class="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-700/50">
+        <!-- SELETTORE SERIE (LIQUIDITÀ / TITOLI / ENTRAMBI) -->
+        <div class="inline-flex rounded-lg bg-slate-900/80 p-0.5 border border-slate-700/60 text-xs">
+          <button id="btn-series-both" onclick="setTrendSeries('both')" class="px-2.5 py-1 rounded-md transition-colors bg-blue-600 text-white font-medium shadow-sm">Entrambi</button>
+          <button id="btn-series-cash" onclick="setTrendSeries('cash')" class="px-2.5 py-1 rounded-md transition-colors text-slate-400 hover:text-white flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-emerald-400"></span>Liquidità
+          </button>
+          <button id="btn-series-stocks" onclick="setTrendSeries('stocks')" class="px-2.5 py-1 rounded-md transition-colors text-slate-400 hover:text-white flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-blue-400"></span>Titoli
+          </button>
+        </div>
+
+        <!-- SELETTORE TIMEFRAME (3M / 6M / 12M / MAX) -->
+        <div class="inline-flex rounded-lg bg-slate-900/80 p-0.5 border border-slate-700/60 text-xs font-semibold">
+          <button id="btn-tf-3m" onclick="setTrendTimeframe('3m')" class="px-2.5 py-1 rounded-md transition-colors text-slate-400 hover:text-white">3M</button>
+          <button id="btn-tf-6m" onclick="setTrendTimeframe('6m')" class="px-2.5 py-1 rounded-md transition-colors text-slate-400 hover:text-white">6M</button>
+          <button id="btn-tf-12m" onclick="setTrendTimeframe('12m')" class="px-2.5 py-1 rounded-md transition-colors bg-slate-700 text-white shadow-sm">12M</button>
+          <button id="btn-tf-max" onclick="setTrendTimeframe('max')" class="px-2.5 py-1 rounded-md transition-colors text-slate-400 hover:text-white">MAX</button>
+        </div>
+      </div>
+
+      <!-- GRAFICO CANVAS -->
+      <div class="h-64 sm:h-72 relative w-full flex items-center justify-center">
+        <canvas id="trendHistoryChart"></canvas>
+        <div id="trend-loading-msg" class="absolute text-xs text-slate-400 flex items-center gap-2">
+          <svg class="animate-spin h-4 w-4 text-blue-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          Caricamento dati CSV...
+        </div>
+        <div id="trend-error-msg" class="absolute text-xs text-rose-400 bg-rose-950/70 border border-rose-800/60 rounded-lg p-3 max-w-md text-center hidden">
+          <!-- Messaggio di errore -->
+        </div>
+      </div>
+    </div>
+
     <!-- SEZIONE GRAFICO ALLOCAZIONE -->
     <div class="bg-slate-800/80 border border-slate-700/60 rounded-xl shadow-sm p-4">
       <h2 class="font-medium text-slate-300 text-xs uppercase tracking-wider mb-3">Allocazione Portafoglio</h2>
@@ -407,6 +468,67 @@
     </div>
   </div>
 
+  <!-- MODALE CONFIGURAZIONE CSV & ISTRUZIONI -->
+  <div id="modal-csv-config" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+    <div class="bg-slate-800 border border-slate-700 rounded-xl max-w-lg w-full p-5 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+      <div class="flex justify-between items-center">
+        <div>
+          <h3 class="text-sm font-semibold text-white">Sorgente Dati CSV & Istruzioni</h3>
+          <p class="text-[11px] text-slate-400">Collega il tuo foglio Google Fogli o qualsiasi CSV pubblico.</p>
+        </div>
+        <button onclick="closeCsvModal()" class="text-slate-400 hover:text-white text-lg">&times;</button>
+      </div>
+
+      <form id="form-csv-config" onsubmit="saveCsvConfig(event)" class="space-y-3">
+        <div>
+          <label class="block text-xs text-slate-400 mb-1">URL CSV Pubblico (Google Fogli o Web)</label>
+          <textarea id="csv-url-input" rows="3" required placeholder="https://docs.google.com/spreadsheets/d/e/.../pub?output=csv" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-blue-500 font-mono"></textarea>
+        </div>
+
+        <div id="csv-modal-status" class="text-xs rounded-lg p-2.5 hidden"></div>
+
+        <div class="flex flex-wrap items-center justify-between gap-2 pt-1">
+          <button type="button" onclick="resetDefaultCsvUrl()" class="text-xs text-slate-400 hover:text-slate-200 underline">
+            Ripristina URL Predefinito
+          </button>
+          <div class="flex gap-2">
+            <button type="button" onclick="closeCsvModal()" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-xs text-slate-200 rounded-lg">Chiudi</button>
+            <button type="submit" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-xs font-medium text-white rounded-lg">Salva e Ricarica</button>
+          </div>
+        </div>
+      </form>
+
+      <!-- GUIDA & MODELLO CSV -->
+      <div class="border-t border-slate-700/60 pt-4 space-y-3">
+        <div class="flex items-center justify-between">
+          <h4 class="text-xs font-semibold text-slate-200 uppercase tracking-wider">Modello & Guida Google Drive</h4>
+          <button type="button" onclick="downloadCSVTemplate()" class="text-xs bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 border border-emerald-500/30 px-2.5 py-1 rounded-md flex items-center gap-1.5 transition-colors">
+            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            Scarica Modello CSV
+          </button>
+        </div>
+
+        <div class="bg-slate-900/60 border border-slate-700/50 rounded-lg p-3 text-xs text-slate-300 space-y-2.5 leading-relaxed">
+          <div class="font-medium text-blue-400 flex items-center gap-1">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span>Come pubblicare il proprio foglio da Google Drive:</span>
+          </div>
+          <ol class="list-decimal list-inside space-y-2 text-[11px] text-slate-300">
+            <li><strong class="text-slate-100">Prepara il foglio:</strong> Crea un foglio su <a href="https://sheets.google.com" target="_blank" class="text-blue-400 hover:underline">Google Fogli</a> con le colonne: <code class="bg-slate-800 px-1 py-0.5 rounded text-slate-200">Mese</code>, <code class="bg-slate-800 px-1 py-0.5 rounded text-slate-200">Totale liquidità</code>, <code class="bg-slate-800 px-1 py-0.5 rounded text-slate-200">Titoli</code> (puoi importare il modello CSV scaricabile con il tasto verde in alto).</li>
+            <li><strong class="text-slate-100">Pubblica sul web:</strong> Nel menu in alto di Google Fogli clicca su <strong class="text-white">File</strong> &gt; <strong class="text-white">Condividi</strong> &gt; <strong class="text-white">Pubblica sul web</strong>.</li>
+            <li><strong class="text-slate-100">Scegli formato CSV:</strong> Nella scheda "Collegamento", seleziona il foglio desiderato e nel secondo menu a tendina seleziona <strong class="text-emerald-400">Valori separati da virgola (.csv)</strong> anziché <em>Pagina web</em>.</li>
+            <li><strong class="text-slate-100">Copia il link:</strong> Fai clic sul pulsante verde <strong class="text-white">Pubblica</strong> e copia il link generato (l'URL conterrà il parametro <code class="bg-slate-800 px-1 py-0.5 rounded text-blue-300">output=csv</code>).</li>
+            <li><strong class="text-slate-100">Incolla e Salva:</strong> Incolla il link nel campo in alto e clicca su <strong class="text-white">Salva e Ricarica</strong>. Il grafico leggerà i dati direttamente dal tuo foglio!</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- LOGICA JAVASCRIPT & FIREBASE -->
   <script>
     const firebaseConfig = {
@@ -428,6 +550,7 @@
     // Sandbox isolato: non condivide i dati cloud/locali con portafoglio (produzione)
     const DATA_COLLECTION = 'portafogli_utenti_dev';
     const LOCAL_STORAGE_KEY = 'patrimonio_data_v3_dev';
+    const DEFAULT_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTSh-PJ8uff324g2SKnIxq4UnXCWVJjl-wer-CDciNP3xXHTFCdX_FIumP5NA2I8XpWqRXL2gHoMKTq/pub?gid=2116695106&single=true&output=csv';
 
     let currentUser = null;
     
@@ -438,6 +561,12 @@
     };
 
     let allocationChartInstance = null;
+    let trendChartInstance = null;
+    let trendRawData = [];
+    let currentTrendTimeframe = '12m'; // '3m', '6m', '12m', 'max'
+    let currentTrendSeries = 'both'; // 'both', 'cash', 'stocks'
+    let currentLoadedCsvUrl = '';
+    let isFetchingCsv = false;
     let isLoggingIn = false;
     let autoFetchDone = false;
 
@@ -468,6 +597,7 @@
       return {
         id: id,
         name: name,
+        csvUrl: DEFAULT_CSV_URL,
         assets: [],
         watchlist: [],
         accounts: {
@@ -484,6 +614,9 @@
 
       // Se i dati hanno già il nuovo formato con i portafogli multipli
       if (raw.portfolios && Array.isArray(raw.portfolios)) {
+        raw.portfolios.forEach(p => {
+          if (!p.csvUrl) p.csvUrl = DEFAULT_CSV_URL;
+        });
         return raw;
       }
 
@@ -491,6 +624,7 @@
       const migratedPortfolio = {
         id: 'default',
         name: 'Portafoglio Principale',
+        csvUrl: raw.csvUrl || DEFAULT_CSV_URL,
         assets: raw.assets || raw.portafoglio || [],
         watchlist: raw.watchlist || [],
         accounts: raw.accounts || {
@@ -1084,8 +1218,435 @@
       safeSetText('gain-loss-val', `Totale: ${isPos ? '+' : ''}${formatEUR(totalProfit)} (${isPos ? '+' : ''}${totalProfitPerc.toFixed(2)}%)`);
 
       renderAllocationChart(p, totalCash);
+      loadCsvDataForCurrentPortfolio();
       renderList(p);
       renderWatchlistList(p);
+    }
+
+    /* --- GESTIONE GRAFICO ANDAMENTO TEMPORALE CSV --- */
+    function getCurrentCsvUrl() {
+      const p = getCurrentPortfolio();
+      return (p && p.csvUrl && p.csvUrl.trim()) ? p.csvUrl.trim() : DEFAULT_CSV_URL;
+    }
+
+    function openCsvModal() {
+      const urlInput = document.getElementById('csv-url-input');
+      const statusEl = document.getElementById('csv-modal-status');
+      if (urlInput) urlInput.value = getCurrentCsvUrl();
+      if (statusEl) {
+        statusEl.className = 'hidden';
+        statusEl.innerText = '';
+      }
+      document.getElementById('modal-csv-config').classList.remove('hidden');
+    }
+
+    function closeCsvModal() {
+      document.getElementById('modal-csv-config').classList.add('hidden');
+    }
+
+    function resetDefaultCsvUrl() {
+      const urlInput = document.getElementById('csv-url-input');
+      if (urlInput) urlInput.value = DEFAULT_CSV_URL;
+    }
+
+    async function saveCsvConfig(event) {
+      event.preventDefault();
+      const urlInput = document.getElementById('csv-url-input');
+      const statusEl = document.getElementById('csv-modal-status');
+      const newUrl = (urlInput?.value || '').trim() || DEFAULT_CSV_URL;
+      
+      const p = getCurrentPortfolio();
+      p.csvUrl = newUrl;
+      saveUserData();
+
+      if (statusEl) {
+        statusEl.className = "text-xs rounded-lg p-2.5 bg-blue-950/60 border border-blue-800/60 text-blue-200 block";
+        statusEl.innerText = "Caricamento e verifica dati in corso...";
+      }
+
+      const ok = await fetchAndParseCsv(newUrl, true);
+      if (ok) {
+        if (statusEl) {
+          statusEl.className = "text-xs rounded-lg p-2.5 bg-emerald-950/60 border border-emerald-800/60 text-emerald-200 block";
+          statusEl.innerText = `CSV verificato e caricato con successo (${trendRawData.length} mesi trovati).`;
+        }
+        setTimeout(() => closeCsvModal(), 1200);
+      } else {
+        if (statusEl) {
+          statusEl.className = "text-xs rounded-lg p-2.5 bg-rose-950/60 border border-rose-800/60 text-rose-200 block";
+          statusEl.innerText = "Errore durante il caricamento del CSV. Verifica che il link sia pubblico e in formato CSV.";
+        }
+      }
+    }
+
+    function downloadCSVTemplate() {
+      const csvContent = "Mese,Totale entrate,Totale uscite,Totale liquidità,Titoli\n" +
+        "gennaio 2025,€ 3.000,€ 2.000,€ 10.000,€ 15.000\n" +
+        "febbraio 2025,€ 3.000,€ 2.100,€ 10.900,€ 15.500\n" +
+        "marzo 2025,€ 3.200,€ 1.900,€ 12.200,€ 16.000\n" +
+        "aprile 2025,€ 3.000,€ 2.200,€ 13.000,€ 16.200\n" +
+        "maggio 2025,€ 3.500,€ 2.000,€ 14.500,€ 17.000\n" +
+        "giugno 2025,€ 3.000,€ 2.500,€ 15.000,€ 17.500\n";
+      const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute("download", "modello_portafoglio.csv");
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }
+
+    function parseItalianDate(str) {
+      if (!str) return null;
+      const s = str.toString().trim().toLowerCase();
+      const months = {
+        gennaio: 0, febbraio: 1, marzo: 2, aprile: 3, maggio: 4, giugno: 5,
+        luglio: 6, agosto: 7, settembre: 8, ottobre: 9, novembre: 10, dicembre: 11,
+        gen: 0, feb: 1, mar: 2, apr: 3, mag: 4, giu: 5, lug: 6, ago: 7, set: 8, ott: 9, nov: 10, dic: 11,
+        january: 0, february: 1, march: 2, april: 3, may: 4, june: 5,
+        july: 6, august: 7, september: 8, october: 9, november: 10, december: 11,
+        jan: 0, feb: 1, mar: 2, apr: 3, jun: 5, jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11
+      };
+      const words = s.split(/[\s\-_/.]+/).filter(Boolean);
+      let m = -1, y = -1;
+      for (const w of words) {
+        if (months[w] !== undefined) m = months[w];
+        else if (/^\d{4}$/.test(w)) y = parseInt(w, 10);
+        else if (/^\d{1,2}$/.test(w) && m === -1) {
+          const n = parseInt(w, 10);
+          if (n >= 1 && n <= 12) m = n - 1;
+        }
+      }
+      if (y !== -1 && m !== -1) return new Date(y, m, 1);
+      const d = new Date(str);
+      return isNaN(d.getTime()) ? null : d;
+    }
+
+    function parseCurrencyNumber(val) {
+      if (val === undefined || val === null) return 0;
+      let s = val.toString().trim().replace(/€/g, '').replace(/\s+/g, '');
+      if (!s) return 0;
+      if (s.includes('.') && s.includes(',')) {
+        if (s.indexOf('.') < s.indexOf(',')) s = s.replace(/\./g, '').replace(',', '.');
+        else s = s.replace(/,/g, '');
+      } else if (s.includes('.')) {
+        const parts = s.split('.');
+        if (parts.length > 1 && parts.every((p, idx) => idx === 0 || p.length === 3)) {
+          s = s.replace(/\./g, '');
+        }
+      } else if (s.includes(',')) {
+        s = s.replace(',', '.');
+      }
+      const n = parseFloat(s);
+      return isNaN(n) ? 0 : n;
+    }
+
+    function parseCsvContent(text) {
+      const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+      const csvLines = lines.filter(l => l.includes(','));
+      if (csvLines.length === 0) return [];
+      
+      function parseRow(row) {
+        const res = [];
+        let cur = '';
+        let inQuotes = false;
+        for (let i = 0; i < row.length; i++) {
+          const c = row[i];
+          if (c === '"') {
+            inQuotes = !inQuotes;
+          } else if (c === ',' && !inQuotes) {
+            res.push(cur.trim());
+            cur = '';
+          } else {
+            cur += c;
+          }
+        }
+        res.push(cur.trim());
+        return res;
+      }
+
+      const header = parseRow(csvLines[0]).map(h => h.toLowerCase().trim());
+      let dateIdx = header.findIndex(h => h.includes('mese') || h.includes('data') || h.includes('date'));
+      let cashIdx = header.findIndex(h => h.includes('liquidit') || h.includes('cash'));
+      let stocksIdx = header.findIndex(h => h.includes('titol') || h.includes('stocks') || h.includes('invest'));
+
+      if (dateIdx === -1) dateIdx = 0;
+      if (cashIdx === -1) cashIdx = 3;
+      if (stocksIdx === -1) stocksIdx = 4;
+
+      const items = [];
+      for (let i = 1; i < csvLines.length; i++) {
+        const row = parseRow(csvLines[i]);
+        if (row.length <= Math.max(dateIdx, cashIdx, stocksIdx)) continue;
+        const rawDate = row[dateIdx];
+        const d = parseItalianDate(rawDate);
+        if (!d) continue;
+        const cash = parseCurrencyNumber(row[cashIdx]);
+        const stocks = parseCurrencyNumber(row[stocksIdx]);
+        items.push({
+          date: d,
+          rawDate: rawDate,
+          label: rawDate,
+          cash: cash,
+          stocks: stocks,
+          total: cash + stocks
+        });
+      }
+
+      items.sort((a, b) => a.date.getTime() - b.date.getTime());
+      return items;
+    }
+
+    async function fetchAndParseCsv(url, force = false) {
+      if (!url) url = getCurrentCsvUrl();
+      if (!force && url === currentLoadedCsvUrl && trendRawData.length > 0) {
+        renderTrendChart();
+        return true;
+      }
+
+      isFetchingCsv = true;
+      const badge = document.getElementById('trend-data-badge');
+      const reloadIcon = document.getElementById('csv-reload-icon');
+      const loadingEl = document.getElementById('trend-loading-msg');
+      const errorEl = document.getElementById('trend-error-msg');
+
+      if (badge) badge.innerText = "Caricamento...";
+      if (reloadIcon) reloadIcon.classList.add('animate-spin');
+      if (loadingEl && trendRawData.length === 0) loadingEl.classList.remove('hidden');
+      if (errorEl) errorEl.classList.add('hidden');
+
+      try {
+        const res = await fetch(url, { redirect: 'follow' });
+        if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+        const text = await res.text();
+        const parsed = parseCsvContent(text);
+        if (parsed.length === 0) throw new Error("Nessuna riga valida trovata nel CSV.");
+
+        trendRawData = parsed;
+        currentLoadedCsvUrl = url;
+        if (badge) badge.innerText = `${parsed.length} mesi`;
+        if (loadingEl) loadingEl.classList.add('hidden');
+        renderTrendChart();
+        return true;
+      } catch (err) {
+        console.error("Errore fetch CSV:", err);
+        if (badge) badge.innerText = "Errore CSV";
+        if (loadingEl) loadingEl.classList.add('hidden');
+        if (errorEl) {
+          errorEl.innerText = `Impossibile caricare il CSV: ${err.message}. Verifica l'URL o consulta la guida.`;
+          errorEl.classList.remove('hidden');
+        }
+        return false;
+      } finally {
+        isFetchingCsv = false;
+        if (reloadIcon) reloadIcon.classList.remove('animate-spin');
+      }
+    }
+
+    function reloadCsvData() {
+      fetchAndParseCsv(getCurrentCsvUrl(), true);
+    }
+
+    function loadCsvDataForCurrentPortfolio() {
+      const url = getCurrentCsvUrl();
+      if (url !== currentLoadedCsvUrl || trendRawData.length === 0) {
+        fetchAndParseCsv(url, false);
+      } else {
+        renderTrendChart();
+      }
+    }
+
+    function getFilteredTrendData(items, timeframe) {
+      if (!items || items.length === 0) return [];
+      if (timeframe === 'max') return items;
+      
+      const now = new Date();
+      const historical = items.filter(item => item.date <= now);
+      const baseList = historical.length > 0 ? historical : items;
+      
+      let count = 12;
+      if (timeframe === '3m') count = 3;
+      else if (timeframe === '6m') count = 6;
+      else if (timeframe === '12m') count = 12;
+      
+      return baseList.slice(-count);
+    }
+
+    function setTrendTimeframe(tf) {
+      currentTrendTimeframe = tf;
+      ['3m', '6m', '12m', 'max'].forEach(t => {
+        const btn = document.getElementById(`btn-tf-${t}`);
+        if (!btn) return;
+        if (t === tf) {
+          btn.className = "px-2.5 py-1 rounded-md transition-colors bg-slate-700 text-white shadow-sm font-semibold";
+        } else {
+          btn.className = "px-2.5 py-1 rounded-md transition-colors text-slate-400 hover:text-white font-normal";
+        }
+      });
+      renderTrendChart();
+    }
+
+    function setTrendSeries(series) {
+      currentTrendSeries = series;
+      ['both', 'cash', 'stocks'].forEach(s => {
+        const btn = document.getElementById(`btn-series-${s}`);
+        if (!btn) return;
+        const isCurrent = s === series;
+        if (s === 'both') {
+          btn.className = `px-2.5 py-1 rounded-md transition-colors ${isCurrent ? 'bg-blue-600 text-white font-medium shadow-sm' : 'text-slate-400 hover:text-white font-normal'}`;
+        } else if (s === 'cash') {
+          btn.className = `px-2.5 py-1 rounded-md transition-colors ${isCurrent ? 'bg-emerald-600/30 text-emerald-300 font-medium shadow-sm border border-emerald-500/40' : 'text-slate-400 hover:text-white font-normal'} flex items-center gap-1.5`;
+        } else if (s === 'stocks') {
+          btn.className = `px-2.5 py-1 rounded-md transition-colors ${isCurrent ? 'bg-blue-600/30 text-blue-300 font-medium shadow-sm border border-blue-500/40' : 'text-slate-400 hover:text-white font-normal'} flex items-center gap-1.5`;
+        }
+      });
+      renderTrendChart();
+    }
+
+    function renderTrendChart() {
+      const ctx = document.getElementById('trendHistoryChart');
+      if (!ctx) return;
+
+      const data = getFilteredTrendData(trendRawData, currentTrendTimeframe);
+      
+      if (trendChartInstance) {
+        trendChartInstance.destroy();
+        trendChartInstance = null;
+      }
+
+      const loadingEl = document.getElementById('trend-loading-msg');
+      const errorEl = document.getElementById('trend-error-msg');
+      if (loadingEl) loadingEl.classList.add('hidden');
+      if (errorEl) errorEl.classList.add('hidden');
+
+      if (!data || data.length === 0) {
+        if (loadingEl && (!trendRawData || trendRawData.length === 0)) {
+          loadingEl.classList.remove('hidden');
+        }
+        return;
+      }
+
+      const labels = data.map(d => d.label);
+      const datasets = [];
+
+      if (currentTrendSeries === 'both' || currentTrendSeries === 'cash') {
+        datasets.push({
+          label: 'Liquidità',
+          data: data.map(d => d.cash),
+          borderColor: '#10b981',
+          backgroundColor: 'rgba(16, 185, 129, 0.12)',
+          borderWidth: 2,
+          tension: 0.3,
+          fill: true,
+          pointRadius: data.length > 36 ? 0 : 3,
+          pointHoverRadius: 5,
+          pointBackgroundColor: '#10b981',
+          pointBorderColor: '#0f172a',
+          pointBorderWidth: 2
+        });
+      }
+
+      if (currentTrendSeries === 'both' || currentTrendSeries === 'stocks') {
+        datasets.push({
+          label: 'Titoli',
+          data: data.map(d => d.stocks),
+          borderColor: '#3b82f6',
+          backgroundColor: 'rgba(59, 130, 246, 0.12)',
+          borderWidth: 2,
+          tension: 0.3,
+          fill: true,
+          pointRadius: data.length > 36 ? 0 : 3,
+          pointHoverRadius: 5,
+          pointBackgroundColor: '#3b82f6',
+          pointBorderColor: '#0f172a',
+          pointBorderWidth: 2
+        });
+      }
+
+      trendChartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: datasets
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: {
+            mode: 'index',
+            intersect: false
+          },
+          plugins: {
+            legend: {
+              display: true,
+              position: 'top',
+              align: 'end',
+              labels: {
+                color: '#94a3b8',
+                font: { size: 11 },
+                boxWidth: 10,
+                boxHeight: 10,
+                usePointStyle: true
+              }
+            },
+            tooltip: {
+              backgroundColor: 'rgba(15, 23, 42, 0.95)',
+              borderColor: '#334155',
+              borderWidth: 1,
+              titleColor: '#f8fafc',
+              bodyColor: '#cbd5e1',
+              padding: 10,
+              boxPadding: 4,
+              usePointStyle: true,
+              callbacks: {
+                label: function(context) {
+                  const val = context.parsed.y || 0;
+                  return ` ${context.dataset.label}: ${formatEUR(val, 0, 0)}`;
+                },
+                footer: function(tooltipItems) {
+                  if (tooltipItems.length > 1) {
+                    const total = tooltipItems.reduce((sum, item) => sum + (item.parsed.y || 0), 0);
+                    return ` Patrimonio: ${formatEUR(total, 0, 0)}`;
+                  }
+                  return '';
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              grid: {
+                color: 'rgba(51, 65, 85, 0.3)',
+                drawBorder: false
+              },
+              ticks: {
+                color: '#94a3b8',
+                font: { size: 10 },
+                maxRotation: 45,
+                autoSkip: true,
+                maxTicksLimit: 12
+              }
+            },
+            y: {
+              grid: {
+                color: 'rgba(51, 65, 85, 0.3)',
+                drawBorder: false
+              },
+              ticks: {
+                color: '#94a3b8',
+                font: { size: 10 },
+                callback: function(val) {
+                  if (val >= 1000000) return (val / 1000000).toFixed(1) + 'M €';
+                  if (val >= 1000) return (val / 1000).toFixed(0) + 'k €';
+                  return val + ' €';
+                }
+              }
+            }
+          }
+        }
+      });
     }
 
     function renderAllocationChart(p, totalCash) {
