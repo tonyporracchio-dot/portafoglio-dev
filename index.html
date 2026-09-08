@@ -134,7 +134,6 @@
             <span class="text-[11px] font-medium text-slate-400 uppercase tracking-wider">Liquidità Totale</span>
             <div class="flex items-center gap-2">
               <button onclick="openAccountsModal()" class="text-xs text-blue-400 hover:underline">Conti</button>
-              <button onclick="openHistoryModal()" class="text-xs text-slate-400 hover:underline">Storico 12M</button>
             </div>
           </div>
           <div id="cash-val" class="text-2xl font-bold text-emerald-400 mt-1">€ 0,00</div>
@@ -304,7 +303,7 @@
 
       <form id="form-accounts" onsubmit="saveAccountsData(event)" class="space-y-4">
         <div class="bg-blue-900/30 border border-blue-700/50 rounded-lg p-3 text-center">
-          <p class="text-[11px] text-blue-200">La liquidità totale per i conti è presa automaticamente dallo storico del mese precedente.</p>
+          <p class="text-[11px] text-blue-200">La liquidità totale per i conti è presa automaticamente dal CSV dell'andamento.</p>
           <p class="text-lg font-bold text-white mt-1" id="acc-cash-display">€ 0,00</p>
         </div>
 
@@ -866,7 +865,7 @@
     function openAccountsModal() {
       const p = getCurrentPortfolio();
       const acc = p.accounts;
-      const totalCash = getPreviousMonthCash(p.history12m);
+      const totalCash = (trendRawData && trendRawData.length > 0) ? getCsvCashMetrics(trendRawData).totalCash : getPreviousMonthCash(p.history12m);
 
       document.getElementById('acc-cash-display').innerText = formatEUR(totalCash);
 
@@ -1154,25 +1153,37 @@
         totalDailyGainLoss += assetDailyEuro;
       });
 
-      // Calcolo Cash in base allo storico del mese scorso
-      const totalCash = getPreviousMonthCash(p.history12m);
+      // Calcolo Cash e variazioni direttamente dal CSV (con fallback su history12m se non ancora caricato)
+      const hasCsvData = trendRawData && trendRawData.length > 0;
+      const cashMetrics = getCsvCashMetrics(trendRawData);
+      const totalCash = hasCsvData ? cashMetrics.totalCash : getPreviousMonthCash(p.history12m);
       calculateWaterfall(p.accounts, totalCash);
 
-      // Calcolo Variazione Mese per Liquidità: Mese Scorso (totalCash) vs 2 Mesi Fa
-      const now = new Date();
-      const d2 = new Date(now.getFullYear(), now.getMonth() - 2, 1);
-      const ym2 = `${d2.getFullYear()}-${String(d2.getMonth() + 1).padStart(2, '0')}`;
-      const prevCash = (p.history12m && p.history12m[ym2] !== undefined && p.history12m[ym2] !== '') ? parseFloat(p.history12m[ym2]) : 0;
-      
-      const cashDiff = totalCash - prevCash;
-      const cashDiffPerc = prevCash > 0 ? (cashDiff / prevCash) * 100 : 0;
+      // Variazioni Liquidità (Mese e 12M) estratte direttamente dal CSV
+      let cashDiff = 0;
+      let cashDiffPerc = 0;
+      let cash12Diff = 0;
+      let cash12Perc = 0;
 
-      // Calcolo Variazione 12M per Liquidità: Mese Scorso vs 1 Anno Fa
-      const d12 = new Date(now.getFullYear() - 1, now.getMonth() - 1, 1);
-      const ym12 = `${d12.getFullYear()}-${String(d12.getMonth() + 1).padStart(2, '0')}`;
-      const cash12Val = (p.history12m && p.history12m[ym12] !== undefined && p.history12m[ym12] !== '') ? parseFloat(p.history12m[ym12]) : totalCash;
-      const cash12Diff = totalCash - cash12Val;
-      const cash12Perc = cash12Val > 0 ? (cash12Diff / cash12Val) * 100 : 0;
+      if (hasCsvData) {
+        cashDiff = cashMetrics.cashDiff;
+        cashDiffPerc = cashMetrics.cashDiffPerc;
+        cash12Diff = cashMetrics.cash12Diff;
+        cash12Perc = cashMetrics.cash12Perc;
+      } else {
+        const now = new Date();
+        const d2 = new Date(now.getFullYear(), now.getMonth() - 2, 1);
+        const ym2 = `${d2.getFullYear()}-${String(d2.getMonth() + 1).padStart(2, '0')}`;
+        const prevCash = (p.history12m && p.history12m[ym2] !== undefined && p.history12m[ym2] !== '') ? parseFloat(p.history12m[ym2]) : 0;
+        cashDiff = totalCash - prevCash;
+        cashDiffPerc = prevCash > 0 ? (cashDiff / prevCash) * 100 : 0;
+
+        const d12 = new Date(now.getFullYear() - 1, now.getMonth() - 1, 1);
+        const ym12 = `${d12.getFullYear()}-${String(d12.getMonth() + 1).padStart(2, '0')}`;
+        const cash12Val = (p.history12m && p.history12m[ym12] !== undefined && p.history12m[ym12] !== '') ? parseFloat(p.history12m[ym12]) : totalCash;
+        cash12Diff = totalCash - cash12Val;
+        cash12Perc = cash12Val > 0 ? (cash12Diff / cash12Val) * 100 : 0;
+      }
 
       const totalPortfolio = totalInvestedVal + totalCash;
       const totalProfit = totalInvestedVal - totalCostVal;
@@ -1224,6 +1235,43 @@
     }
 
     /* --- GESTIONE GRAFICO ANDAMENTO TEMPORALE CSV --- */
+    function getCsvCashMetrics(items) {
+      if (!items || items.length === 0) {
+        return { totalCash: 0, cashDiff: 0, cashDiffPerc: 0, cash12Diff: 0, cash12Perc: 0 };
+      }
+      const now = new Date();
+      const historical = items.filter(i => i.date <= now);
+      const baseList = historical.length > 0 ? historical : items;
+      const currentIdx = baseList.length - 1;
+      const currentItem = baseList[currentIdx];
+      const totalCash = currentItem ? currentItem.cash : 0;
+      
+      // Mese precedente
+      const prevIdx = currentIdx - 1;
+      const prevItem = prevIdx >= 0 ? baseList[prevIdx] : null;
+      const prevCash = prevItem ? prevItem.cash : totalCash;
+      const cashDiff = totalCash - prevCash;
+      const cashDiffPerc = prevCash > 0 ? (cashDiff / prevCash) * 100 : 0;
+      
+      // 12 Mesi fa
+      const idx12 = currentIdx - 12;
+      const item12 = idx12 >= 0 ? baseList[idx12] : (baseList.length > 0 ? baseList[0] : null);
+      const cash12Val = item12 ? item12.cash : totalCash;
+      const cash12Diff = totalCash - cash12Val;
+      const cash12Perc = cash12Val > 0 ? (cash12Diff / cash12Val) * 100 : 0;
+      
+      return {
+        currentItem: currentItem ? currentItem.label : '',
+        totalCash,
+        prevItem: prevItem ? prevItem.label : '',
+        cashDiff,
+        cashDiffPerc,
+        item12: item12 ? item12.label : '',
+        cash12Diff,
+        cash12Perc
+      };
+    }
+
     function getCurrentCsvUrl() {
       const p = getCurrentPortfolio();
       return (p && p.csvUrl && p.csvUrl.trim()) ? p.csvUrl.trim() : DEFAULT_CSV_URL;
@@ -1429,6 +1477,7 @@
         if (badge) badge.innerText = `${parsed.length} mesi`;
         if (loadingEl) loadingEl.classList.add('hidden');
         renderTrendChart();
+        updateUI();
         return true;
       } catch (err) {
         console.error("Errore fetch CSV:", err);
