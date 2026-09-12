@@ -136,7 +136,10 @@
               <button onclick="openAccountsModal()" class="text-xs text-blue-400 hover:underline">Conti</button>
             </div>
           </div>
-          <div id="cash-val" class="text-2xl font-bold text-emerald-400 mt-1">€ 0,00</div>
+          <div class="flex items-baseline justify-between gap-2 mt-1">
+            <div id="cash-val" class="text-2xl font-bold text-emerald-400">€ 0,00</div>
+            <span id="cash-ref-month" class="text-xs font-semibold text-slate-300 bg-slate-800/80 border border-slate-700/60 px-2 py-0.5 rounded capitalize"></span>
+          </div>
           
           <!-- Variazioni Mese e 12M -->
           <div class="mt-2 space-y-0.5">
@@ -214,6 +217,20 @@
           <button id="btn-tf-6m" onclick="setTrendTimeframe('6m')" class="px-2.5 py-1 rounded-md transition-colors text-slate-400 hover:text-white">6M</button>
           <button id="btn-tf-12m" onclick="setTrendTimeframe('12m')" class="px-2.5 py-1 rounded-md transition-colors bg-slate-700 text-white shadow-sm">12M</button>
           <button id="btn-tf-max" onclick="setTrendTimeframe('max')" class="px-2.5 py-1 rounded-md transition-colors text-slate-400 hover:text-white">MAX</button>
+        </div>
+      </div>
+
+      <!-- LEGENDA LINEA CONTINUA / TRATTEGGIATA (STIMA) -->
+      <div class="flex flex-wrap items-center justify-between text-[11px] text-slate-400 px-0.5 pt-1">
+        <div class="flex flex-wrap items-center gap-3">
+          <span class="inline-flex items-center gap-1.5">
+            <span class="w-3.5 h-0.5 bg-slate-300 rounded inline-block"></span>
+            <span>Storico (fino a <strong id="trend-ref-month-label" class="text-slate-200 capitalize font-medium">agosto 2026</strong>)</span>
+          </span>
+          <span class="inline-flex items-center gap-1.5">
+            <span class="w-4 border-b-2 border-dashed border-amber-400 inline-block"></span>
+            <span class="text-amber-400 font-medium">Mesi futuri (Stima)</span>
+          </span>
         </div>
       </div>
 
@@ -303,7 +320,7 @@
 
       <form id="form-accounts" onsubmit="saveAccountsData(event)" class="space-y-4">
         <div class="bg-blue-900/30 border border-blue-700/50 rounded-lg p-3 text-center">
-          <p class="text-[11px] text-blue-200">La liquidità totale per i conti è presa automaticamente dal CSV dell'andamento.</p>
+          <p class="text-[11px] text-blue-200">La liquidità totale per i conti è presa automaticamente dal CSV (mese di riferimento: <span id="acc-ref-month" class="font-semibold text-white capitalize"></span>).</p>
           <p class="text-lg font-bold text-white mt-1" id="acc-cash-display">€ 0,00</p>
         </div>
 
@@ -864,10 +881,11 @@
     // --- MODALI CONTI E STORICO ---
     function openAccountsModal() {
       const p = getCurrentPortfolio();
-      const acc = p.accounts;
-      const totalCash = (trendRawData && trendRawData.length > 0) ? getCsvCashMetrics(trendRawData).totalCash : getPreviousMonthCash(p.history12m);
+      const cashMetrics = getCsvCashMetrics(trendRawData);
+      const totalCash = (trendRawData && trendRawData.length > 0) ? cashMetrics.totalCash : getPreviousMonthCash(p.history12m);
 
       document.getElementById('acc-cash-display').innerText = formatEUR(totalCash);
+      safeSetText('acc-ref-month', cashMetrics.refMonth || '');
 
       document.getElementById('acc-name-1').value = acc.acc1?.name || "Conto 1";
       document.getElementById('acc-budget-1').value = acc.acc1?.budget || 1500;
@@ -1159,6 +1177,11 @@
       const totalCash = hasCsvData ? cashMetrics.totalCash : getPreviousMonthCash(p.history12m);
       calculateWaterfall(p.accounts, totalCash);
 
+      // Mese di riferimento (es. agosto 2026 se siamo a settembre 2026)
+      const refMonthName = cashMetrics.refMonth || '';
+      safeSetText('cash-ref-month', refMonthName);
+      safeSetText('trend-ref-month-label', refMonthName);
+
       // Variazioni Liquidità (Mese e 12M) estratte direttamente dal CSV
       let cashDiff = 0;
       let cashDiffPerc = 0;
@@ -1235,25 +1258,40 @@
     }
 
     /* --- GESTIONE GRAFICO ANDAMENTO TEMPORALE CSV --- */
+    function getReferenceDate() {
+      const now = new Date();
+      return new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    }
+
     function getCsvCashMetrics(items) {
       if (!items || items.length === 0) {
-        return { totalCash: 0, cashDiff: 0, cashDiffPerc: 0, cash12Diff: 0, cash12Perc: 0 };
+        return {
+          refMonth: '',
+          totalCash: 0,
+          prevItem: '',
+          cashDiff: 0,
+          cashDiffPerc: 0,
+          item12: '',
+          cash12Diff: 0,
+          cash12Perc: 0
+        };
       }
-      const now = new Date();
-      const historical = items.filter(i => i.date <= now);
+      const refDate = getReferenceDate();
+      const historical = items.filter(i => i.date <= refDate);
       const baseList = historical.length > 0 ? historical : items;
       const currentIdx = baseList.length - 1;
       const currentItem = baseList[currentIdx];
       const totalCash = currentItem ? currentItem.cash : 0;
+      const refMonth = currentItem ? currentItem.label : '';
       
-      // Mese precedente
+      // Mese precedente al mese di riferimento
       const prevIdx = currentIdx - 1;
       const prevItem = prevIdx >= 0 ? baseList[prevIdx] : null;
       const prevCash = prevItem ? prevItem.cash : totalCash;
       const cashDiff = totalCash - prevCash;
       const cashDiffPerc = prevCash > 0 ? (cashDiff / prevCash) * 100 : 0;
       
-      // 12 Mesi fa
+      // 12 Mesi fa rispetto al mese di riferimento
       const idx12 = currentIdx - 12;
       const item12 = idx12 >= 0 ? baseList[idx12] : (baseList.length > 0 ? baseList[0] : null);
       const cash12Val = item12 ? item12.cash : totalCash;
@@ -1261,14 +1299,14 @@
       const cash12Perc = cash12Val > 0 ? (cash12Diff / cash12Val) * 100 : 0;
       
       return {
-        currentItem: currentItem ? currentItem.label : '',
-        totalCash,
+        refMonth: refMonth,
+        totalCash: totalCash,
         prevItem: prevItem ? prevItem.label : '',
-        cashDiff,
-        cashDiffPerc,
+        cashDiff: cashDiff,
+        cashDiffPerc: cashDiffPerc,
         item12: item12 ? item12.label : '',
-        cash12Diff,
-        cash12Perc
+        cash12Diff: cash12Diff,
+        cash12Perc: cash12Perc
       };
     }
 
@@ -1424,6 +1462,7 @@
       if (cashIdx === -1) cashIdx = 3;
       if (stocksIdx === -1) stocksIdx = 4;
 
+      const refDate = getReferenceDate();
       const items = [];
       for (let i = 1; i < csvLines.length; i++) {
         const row = parseRow(csvLines[i]);
@@ -1439,7 +1478,8 @@
           label: rawDate,
           cash: cash,
           stocks: stocks,
-          total: cash + stocks
+          total: cash + stocks,
+          isEstimate: d > refDate
         });
       }
 
@@ -1511,8 +1551,8 @@
       if (!items || items.length === 0) return [];
       if (timeframe === 'max') return items;
       
-      const now = new Date();
-      const historical = items.filter(item => item.date <= now);
+      const refDate = getReferenceDate();
+      const historical = items.filter(item => item.date <= refDate);
       const baseList = historical.length > 0 ? historical : items;
       
       let count = 12;
@@ -1580,6 +1620,9 @@
       const labels = data.map(d => d.label);
       const datasets = [];
 
+      const refMonthName = (trendRawData && trendRawData.length > 0) ? getCsvCashMetrics(trendRawData).refMonth : '';
+      if (refMonthName) safeSetText('trend-ref-month-label', refMonthName);
+
       if (currentTrendSeries === 'both' || currentTrendSeries === 'cash') {
         datasets.push({
           label: 'Liquidità',
@@ -1593,7 +1636,10 @@
           pointHoverRadius: 5,
           pointBackgroundColor: '#10b981',
           pointBorderColor: '#0f172a',
-          pointBorderWidth: 2
+          pointBorderWidth: 2,
+          segment: {
+            borderDash: ctx => (data[ctx.p1DataIndex]?.isEstimate ? [6, 6] : undefined)
+          }
         });
       }
 
@@ -1610,7 +1656,10 @@
           pointHoverRadius: 5,
           pointBackgroundColor: '#3b82f6',
           pointBorderColor: '#0f172a',
-          pointBorderWidth: 2
+          pointBorderWidth: 2,
+          segment: {
+            borderDash: ctx => (data[ctx.p1DataIndex]?.isEstimate ? [6, 6] : undefined)
+          }
         });
       }
 
@@ -1650,16 +1699,33 @@
               boxPadding: 4,
               usePointStyle: true,
               callbacks: {
+                title: function(tooltipItems) {
+                  if (!tooltipItems.length) return '';
+                  const idx = tooltipItems[0].dataIndex;
+                  const item = data[idx];
+                  if (item && item.isEstimate) {
+                    return `${item.label} (Stima)`;
+                  }
+                  return item ? item.label : '';
+                },
                 label: function(context) {
                   const val = context.parsed.y || 0;
-                  return ` ${context.dataset.label}: ${formatEUR(val, 0, 0)}`;
+                  const isEst = data[context.dataIndex]?.isEstimate;
+                  return ` ${context.dataset.label}${isEst ? ' (Stima)' : ''}: ${formatEUR(val, 0, 0)}`;
                 },
                 footer: function(tooltipItems) {
+                  if (!tooltipItems.length) return '';
+                  const idx = tooltipItems[0].dataIndex;
+                  const isEst = data[idx]?.isEstimate;
+                  let str = '';
                   if (tooltipItems.length > 1) {
                     const total = tooltipItems.reduce((sum, item) => sum + (item.parsed.y || 0), 0);
-                    return ` Patrimonio: ${formatEUR(total, 0, 0)}`;
+                    str += ` Patrimonio${isEst ? ' (Stima)' : ''}: ${formatEUR(total, 0, 0)}`;
                   }
-                  return '';
+                  if (isEst) {
+                    str += (str ? '\n' : '') + '⚠️ Mese futuro: dato stimato';
+                  }
+                  return str;
                 }
               }
             }
